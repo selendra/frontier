@@ -25,8 +25,7 @@
 
 use frame_support::{
 	decl_module, decl_storage, decl_error, decl_event,
-	traits::Get, traits::FindAuthor,
-	weights::{Pays, PostDispatchInfo, Weight},
+	traits::Get, traits::FindAuthor, weights::Weight,
 	dispatch::DispatchResultWithPostInfo,
 };
 use sp_std::prelude::*;
@@ -401,10 +400,7 @@ impl<T: Config> Module<T> {
 		Pending::append((transaction, status, receipt));
 
 		Self::deposit_event(Event::Executed(source, contract_address.unwrap_or_default(), transaction_hash, reason));
-		Ok(PostDispatchInfo {
-			actual_weight: Some(T::GasWeightMapping::gas_to_weight(used_gas.unique_saturated_into())),
-			pays_fee: Pays::No,
-		}).into()
+		Ok(Some(T::GasWeightMapping::gas_to_weight(used_gas.unique_saturated_into())).into())
 	}
 
 	/// Get the author using the FindAuthor trait.

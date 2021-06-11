@@ -3,7 +3,7 @@
 **/*.rs.bk
 *.swp
 .wasm-binaries
-polkadot/runtime/wasm/target/
+selendra/runtime/wasm/target/
 core/executor/wasm/target/
 core/test-runtime/wasm/target/
 pwasm-alloc/target/
@@ -14,7 +14,7 @@ node/runtime/wasm/target/
 **/._*
 **/.criterion/
 .vscode
-polkadot.*
+selendra.*
 .DS_Store
 .idea/
 .cargo-remote.toml
