@@ -9,7 +9,7 @@ repository = { workspace = true }
 
 [dependencies]
 ethereum = { workspace = true, features = ["with-codec"] }
-scale-codec = { workspace = true }
+scale-codec = { package = "parity-scale-codec", version = "3.6.4" }
 # Substrate
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
