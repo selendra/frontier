@@ -75,7 +75,7 @@ use scale_info::TypeInfo;
 // Substrate
 use frame_support::{
 	dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo},
-	storage::child::KillStorageResult,
+	storage::{child::KillStorageResult, KeyPrefixIterator},
 	traits::{
 		tokens::{
 			currency::Currency,
@@ -550,7 +550,10 @@ pub mod pallet {
 					frame_system::Pallet::<T>::inc_account_nonce(&account_id);
 				}
 
-				T::Currency::deposit_creating(&account_id, account.balance.unique_saturated_into());
+				let _ = T::Currency::deposit_creating(
+					&account_id,
+					account.balance.unique_saturated_into(),
+				);
 
 				Pallet::<T>::create_account(*address, account.code.clone());
 
@@ -794,6 +797,14 @@ impl<T: Config> Pallet<T> {
 		let code_len = <AccountCodes<T>>::decode_len(address).unwrap_or(0);
 
 		account.nonce == U256::zero() && account.balance == U256::zero() && code_len == 0
+	}
+	/// Check whether an account is a suicided contract
+	pub fn is_account_suicided(address: &H160) -> bool {
+		<Suicided<T>>::contains_key(address)
+	}
+
+	pub fn iter_account_storages(address: &H160) -> KeyPrefixIterator<H256> {
+		<AccountStorages<T>>::iter_key_prefix(address)
 	}
 
 	/// Remove an account if its empty.
