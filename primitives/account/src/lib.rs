@@ -28,7 +28,7 @@ use sp_runtime::MultiSignature;
 /// A fully Ethereum-compatible `AccountId`.
 /// Conforms to H160 address and ECDSA key standards.
 /// Alternative to H256->H160 mapping.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default, Hash)]
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct AccountId20(pub [u8; 20]);
 

@@ -40,7 +40,7 @@ use sp_state_machine::OverlayedChanges;
 use fc_rpc_core::types::*;
 use fp_evm::{ExecutionInfo, ExecutionInfoV2};
 use fp_rpc::{EthereumRuntimeRPCApi, RuntimeStorageOverride};
-use fp_storage::{EVM_ACCOUNT_CODES, PALLET_EVM};
+use fp_storage::constants::{EVM_ACCOUNT_CODES, EVM_ACCOUNT_STORAGES, PALLET_EVM};
 
 use crate::{
 	eth::{Eth, EthConfig},
@@ -464,8 +464,7 @@ where
 		}
 
 		let block_gas_limit = {
-			let schema = fc_storage::onchain_storage_schema(client.as_ref(), substrate_hash);
-			let block = block_data_cache.current_block(schema, substrate_hash).await;
+			let block = block_data_cache.current_block(substrate_hash).await;
 			block
 				.ok_or_else(|| internal_err("block unavailable, cannot query gas limit"))?
 				.header
@@ -916,12 +915,10 @@ where
 					overlayed_changes.set_storage(key.clone(), Some(encoded_code));
 				}
 
-				let mut account_storage_key = [
-					twox_128(PALLET_EVM),
-					twox_128(fp_storage::EVM_ACCOUNT_STORAGES),
-				]
-				.concat()
-				.to_vec();
+				let mut account_storage_key =
+					[twox_128(PALLET_EVM), twox_128(EVM_ACCOUNT_STORAGES)]
+						.concat()
+						.to_vec();
 				account_storage_key.extend(blake2_128(address.as_bytes()));
 				account_storage_key.extend(address.as_bytes());
 
@@ -1048,8 +1045,7 @@ fn fee_details(
 		// Default to EIP-1559 transaction
 		_ => Ok(FeeDetails {
 			gas_price: None,
-			// Old runtimes require max_fee_per_gas to be None for non transactional calls.
-			max_fee_per_gas: None,
+			max_fee_per_gas: Some(U256::zero()),
 			max_priority_fee_per_gas: Some(U256::zero()),
 			fee_cap: U256::zero(),
 		}),

@@ -2275,7 +2275,6 @@ dependencies = [
  "sp-core",
  "sp-database",
  "sp-runtime",
- "sp-storage",
  "sqlx",
  "substrate-test-runtime-client",
  "tempfile",
