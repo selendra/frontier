@@ -69,7 +69,6 @@ impl<K: Kind, S: Get<u32>> Clone for BoundedBytesString<K, S> {
 	}
 }
 
-
 impl<K1, S1, K2, S2> PartialEq<BoundedBytesString<K2, S2>> for BoundedBytesString<K1, S1> {
 	fn eq(&self, other: &BoundedBytesString<K2, S2>) -> bool {
 		self.data.eq(&other.data)
