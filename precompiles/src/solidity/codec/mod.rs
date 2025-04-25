@@ -38,7 +38,7 @@ pub use native::{Address, BoundedVec};
 // derive macro
 pub use precompile_utils_macro::Codec;
 
-/// Data that can be encoded/encoded followiong the Solidity ABI Specification.
+/// Data that can be encoded/encoded following the Solidity ABI Specification.
 pub trait Codec: Sized {
 	fn read(reader: &mut Reader) -> MayRevert<Self>;
 	fn write(writer: &mut Writer, value: Self);
@@ -259,7 +259,7 @@ impl Writer {
 		}
 	}
 
-	/// Add offseted data at the end of this writer's data, updating the offsets.
+	/// Add offset data at the end of this writer's data, updating the offsets.
 	fn bake_offsets(output: &mut Vec<u8>, offsets: Vec<OffsetChunk>) {
 		for mut offset_chunk in offsets {
 			let offset_position = offset_chunk.offset_position;

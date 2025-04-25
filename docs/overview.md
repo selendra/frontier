@@ -36,12 +36,12 @@ If this is the intended way of usage, take a look at the
 An Ethereum-based blockchain can use the pre-block feeding strategy to
 migrate to Substrate. In the post-block generation model, the Ethereum
 block is generated *after* runtime execution. In the pre-block feeding
-model, the Ethereum block is feeded in *before* runtime
+model, the Ethereum block is fed in *before* runtime
 execution.
 
 A blockchain can first use pre-block feeding with empty extrinsic
 requirement. In this way, because no other external information is
-feeded, combined with a suitable consensus engine, one Ethereum block
+fed, combined with a suitable consensus engine, one Ethereum block
 will have an exact corresponding Substrate block. This is called the
 **wrapper block** strategy, and it allows Frontier to function as a
 normal Ethereum client.
