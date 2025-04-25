@@ -55,6 +55,8 @@
 #![warn(unused_crate_dependencies)]
 #![allow(clippy::too_many_arguments)]
 
+extern crate alloc;
+
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
@@ -169,6 +171,9 @@ pub mod pallet {
 
 		/// Gas limit Pov size ratio.
 		type GasLimitPovSizeRatio: Get<u64>;
+
+		/// Gas limit storage growth ratio.
+		type GasLimitStorageGrowthRatio: Get<u64>;
 
 		/// Define the quick clear limit of storage clearing when a contract suicides. Set to 0 to disable it.
 		type SuicideQuickClearLimit: Get<u32>;

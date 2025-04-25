@@ -138,6 +138,7 @@ const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
 
 parameter_types! {
 	pub const TransactionByteFee: u64 = 1;
+	pub const GasLimitStorageGrowthRatio: u64 = 0;
 	pub const ChainId: u64 = 42;
 	pub const EVMModuleId: PalletId = PalletId(*b"py/evmpa");
 	pub BlockGasLimit: U256 = U256::from(BLOCK_GAS_LIMIT);
@@ -176,6 +177,7 @@ impl pallet_evm::Config for Test {
 	type OnChargeTransaction = ();
 	type OnCreate = ();
 	type FindAuthor = FindAuthorTruncated;
+	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
 	type SuicideQuickClearLimit = SuicideQuickClearLimit;
 	type Timestamp = Timestamp;
