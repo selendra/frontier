@@ -49,7 +49,7 @@ pub struct MappingDb<'a, B, C> {
 impl<'a, B, C> MappingDb<'a, B, C>
 where
 	B: BlockT,
-    C: HeaderBackend<B> + ProvideRuntimeApi<B>,
+	C: HeaderBackend<B> + ProvideRuntimeApi<B>,
 	C::Api: EthereumRuntimeRPCApi<B>,
 {
 	pub fn new(

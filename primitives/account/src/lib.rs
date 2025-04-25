@@ -22,8 +22,8 @@ use scale_info::TypeInfo;
 // Substrate
 use sp_core::{crypto::AccountId32, ecdsa, RuntimeDebug, H160, H256};
 use sp_io::hashing::keccak_256;
-use sp_runtime_interface::pass_by::PassByInner;
 use sp_runtime::MultiSignature;
+use sp_runtime_interface::pass_by::PassByInner;
 
 /// A fully Ethereum-compatible `AccountId`.
 /// Conforms to H160 address and ECDSA key standards.
@@ -192,7 +192,6 @@ impl sp_runtime::traits::Verify for EthereumSignature {
 		}
 	}
 }
-
 
 impl From<MultiSignature> for EthereumSignature {
 	fn from(signature: MultiSignature) -> Self {

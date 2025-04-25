@@ -82,7 +82,6 @@ impl From<[u8; 20]> for MockAccount {
 	}
 }
 
-
 impl From<u64> for MockAccount {
 	fn from(address: u64) -> MockAccount {
 		MockAccount::from_u64(address)

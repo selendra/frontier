@@ -107,7 +107,6 @@ impl FrontierDbCmd {
 		B: BlockT,
 		C: HeaderBackend<B> + ProvideRuntimeApi<B>,
 		C::Api: fp_rpc::EthereumRuntimeRPCApi<B>,
-
 	{
 		match self.column {
 			Column::Meta => {

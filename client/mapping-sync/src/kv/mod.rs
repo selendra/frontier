@@ -104,7 +104,7 @@ pub fn sync_genesis_block<Block: BlockT, C>(
 	header: &Block::Header,
 ) -> Result<(), String>
 where
-    C: HeaderBackend<Block> + ProvideRuntimeApi<Block>,
+	C: HeaderBackend<Block> + ProvideRuntimeApi<Block>,
 	C::Api: EthereumRuntimeRPCApi<Block>,
 {
 	let substrate_block_hash = header.hash();
@@ -278,7 +278,7 @@ pub fn fetch_header<Block: BlockT, C, BE>(
 	sync_from: <Block::Header as HeaderT>::Number,
 ) -> Result<Option<Block::Header>, String>
 where
-    C: HeaderBackend<Block>,
+	C: HeaderBackend<Block>,
 	BE: HeaderBackend<Block>,
 {
 	if frontier_backend.mapping().is_synced(&checking_tip)? {

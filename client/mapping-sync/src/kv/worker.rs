@@ -100,7 +100,7 @@ impl<Block: BlockT, C, BE> MappingSyncWorker<Block, C, BE> {
 
 impl<Block, C, BE> Stream for MappingSyncWorker<Block, C, BE>
 where
-    Block: BlockT,
+	Block: BlockT,
 	C: ProvideRuntimeApi<Block>,
 	C::Api: EthereumRuntimeRPCApi<Block>,
 	C: HeaderBackend<Block> + StorageProvider<Block, BE>,

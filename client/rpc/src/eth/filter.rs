@@ -483,7 +483,7 @@ where
 			};
 			let block = block_data_cache.current_block(substrate_hash).await;
 			let statuses = block_data_cache
-			.current_transaction_statuses(substrate_hash)
+				.current_transaction_statuses(substrate_hash)
 				.await;
 			if let (Some(block), Some(statuses)) = (block, statuses) {
 				filter_block_logs(&mut ret, &filter, block, statuses);
@@ -609,7 +609,7 @@ where
 				statuses.clone()
 			} else {
 				let statuses = block_data_cache
-				    .current_transaction_statuses(substrate_hash)
+					.current_transaction_statuses(substrate_hash)
 					.await;
 				statuses_cache.insert(log.substrate_block_hash, statuses.clone());
 				statuses
