@@ -77,11 +77,12 @@ use frame_support::{
 	dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo},
 	storage::{child::KillStorageResult, KeyPrefixIterator},
 	traits::{
+		fungible::{Balanced, Credit, Debt},
 		tokens::{
 			currency::Currency,
 			fungible::Inspect,
 			imbalance::{Imbalance, OnUnbalanced, SignedImbalance},
-			ExistenceRequirement, Fortitude, Preservation, WithdrawReasons,
+			ExistenceRequirement, Fortitude, Precision, Preservation, WithdrawReasons,
 		},
 		FindAuthor, Get, Time,
 	},
@@ -550,7 +551,10 @@ pub mod pallet {
 					frame_system::Pallet::<T>::inc_account_nonce(&account_id);
 				}
 
-				T::Currency::deposit_creating(&account_id, account.balance.unique_saturated_into());
+				let _ = T::Currency::deposit_creating(
+					&account_id,
+					account.balance.unique_saturated_into(),
+				);
 
 				Pallet::<T>::create_account(*address, account.code.clone());
 
@@ -795,7 +799,6 @@ impl<T: Config> Pallet<T> {
 
 		account.nonce == U256::zero() && account.balance == U256::zero() && code_len == 0
 	}
-
 	/// Check whether an account is a suicided contract
 	pub fn is_account_suicided(address: &H160) -> bool {
 		<Suicided<T>>::contains_key(address)
@@ -899,9 +902,7 @@ impl<T: Config> Pallet<T> {
 	/// Get the account basic in EVM format.
 	pub fn account_basic(address: &H160) -> (Account, frame_support::weights::Weight) {
 		let account_id = T::AddressMapping::into_account_id(*address);
-
 		let nonce = frame_system::Pallet::<T>::account_nonce(&account_id);
-		// keepalive `true` takes into account ExistentialDeposit as part of what's considered liquid balance.
 		let balance =
 			T::Currency::reducible_balance(&account_id, Preservation::Preserve, Fortitude::Polite);
 
@@ -1046,26 +1047,38 @@ where
 		}
 	}
 }
+/// Implements transaction payment for a pallet implementing the [`fungible`]
+/// trait (eg. pallet_balances) using an unbalance handler (implementing
+/// [`OnUnbalanced`]).
+///
+/// Equivalent of `EVMCurrencyAdapter` but for fungible traits. Similar to `FungibleAdapter` of
+/// `pallet_transaction_payment`
+pub struct EVMFungibleAdapter<F, OU>(sp_std::marker::PhantomData<(F, OU)>);
 
-/// Implementation for () does not specify what to do with imbalance
-impl<T> OnChargeEVMTransaction<T> for ()
-	where
+impl<T, F, OU> OnChargeEVMTransaction<T> for EVMFungibleAdapter<F, OU>
+where
 	T: Config,
-	<T::Currency as Currency<<T as frame_system::Config>::AccountId>>::PositiveImbalance:
-		Imbalance<<T::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance, Opposite = <T::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance>,
-	<T::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance:
-Imbalance<<T::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance, Opposite = <T::Currency as Currency<<T as frame_system::Config>::AccountId>>::PositiveImbalance>,
-U256: UniqueSaturatedInto<BalanceOf<T>>,
-
+	F: Balanced<T::AccountId>,
+	OU: OnUnbalanced<Credit<T::AccountId, F>>,
+	U256: UniqueSaturatedInto<<F as Inspect<<T as frame_system::Config>::AccountId>>::Balance>,
 {
 	// Kept type as Option to satisfy bound of Default
-	type LiquidityInfo = Option<NegativeImbalanceOf<T::Currency, T>>;
+	type LiquidityInfo = Option<Credit<T::AccountId, F>>;
 
-	fn withdraw_fee(
-		who: &H160,
-		fee: U256,
-	) -> Result<Self::LiquidityInfo, Error<T>> {
-		EVMCurrencyAdapter::<<T as Config>::Currency, ()>::withdraw_fee(who, fee)
+	fn withdraw_fee(who: &H160, fee: U256) -> Result<Self::LiquidityInfo, Error<T>> {
+		if fee.is_zero() {
+			return Ok(None);
+		}
+		let account_id = T::AddressMapping::into_account_id(*who);
+		let imbalance = F::withdraw(
+			&account_id,
+			fee.unique_saturated_into(),
+			Precision::Exact,
+			Preservation::Preserve,
+			Fortitude::Polite,
+		)
+		.map_err(|_| Error::<T>::BalanceLow)?;
+		Ok(Some(imbalance))
 	}
 
 	fn correct_and_deposit_fee(
@@ -1074,11 +1087,72 @@ U256: UniqueSaturatedInto<BalanceOf<T>>,
 		base_fee: U256,
 		already_withdrawn: Self::LiquidityInfo,
 	) -> Self::LiquidityInfo {
-		<EVMCurrencyAdapter::<<T as Config>::Currency, ()> as OnChargeEVMTransaction<T>>::correct_and_deposit_fee(who, corrected_fee, base_fee, already_withdrawn)
+		if let Some(paid) = already_withdrawn {
+			let account_id = T::AddressMapping::into_account_id(*who);
+
+			// Calculate how much refund we should return
+			let refund_amount = paid
+				.peek()
+				.saturating_sub(corrected_fee.unique_saturated_into());
+			// refund to the account that paid the fees.
+			let refund_imbalance = F::deposit(&account_id, refund_amount, Precision::BestEffort)
+				.unwrap_or_else(|_| Debt::<T::AccountId, F>::zero());
+
+			// merge the imbalance caused by paying the fees and refunding parts of it again.
+			let adjusted_paid = paid
+				.offset(refund_imbalance)
+				.same()
+				.unwrap_or_else(|_| Credit::<T::AccountId, F>::zero());
+
+			let (base_fee, tip) = adjusted_paid.split(base_fee.unique_saturated_into());
+			// Handle base fee. Can be either burned, rationed, etc ...
+			OU::on_unbalanced(base_fee);
+			return Some(tip);
+		}
+		None
 	}
 
 	fn pay_priority_fee(tip: Self::LiquidityInfo) {
-		<EVMCurrencyAdapter::<<T as Config>::Currency, ()> as OnChargeEVMTransaction<T>>::pay_priority_fee(tip);
+		// Default Ethereum behaviour: issue the tip to the block author.
+		if let Some(tip) = tip {
+			let account_id = T::AddressMapping::into_account_id(<Pallet<T>>::find_author());
+			let _ = F::deposit(&account_id, tip.peek(), Precision::BestEffort);
+		}
+	}
+}
+
+/// Implementation for () does not specify what to do with imbalance
+impl<T> OnChargeEVMTransaction<T> for ()
+where
+	T: Config,
+	T::Currency: Balanced<T::AccountId>,
+	U256: UniqueSaturatedInto<
+		<<T as Config>::Currency as Inspect<<T as frame_system::Config>::AccountId>>::Balance,
+	>,
+{
+	// Kept type as Option to satisfy bound of Default
+	type LiquidityInfo = Option<Credit<T::AccountId, T::Currency>>;
+
+	fn withdraw_fee(who: &H160, fee: U256) -> Result<Self::LiquidityInfo, Error<T>> {
+		EVMFungibleAdapter::<T::Currency, ()>::withdraw_fee(who, fee)
+	}
+
+	fn correct_and_deposit_fee(
+		who: &H160,
+		corrected_fee: U256,
+		base_fee: U256,
+		already_withdrawn: Self::LiquidityInfo,
+	) -> Self::LiquidityInfo {
+		<EVMFungibleAdapter<T::Currency, ()> as OnChargeEVMTransaction<T>>::correct_and_deposit_fee(
+			who,
+			corrected_fee,
+			base_fee,
+			already_withdrawn,
+		)
+	}
+
+	fn pay_priority_fee(tip: Self::LiquidityInfo) {
+		<EVMFungibleAdapter<T::Currency, ()> as OnChargeEVMTransaction<T>>::pay_priority_fee(tip);
 	}
 }
 
