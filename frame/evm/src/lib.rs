@@ -180,6 +180,9 @@ pub mod pallet {
 		/// Define the quick clear limit of storage clearing when a contract suicides. Set to 0 to disable it.
 		type SuicideQuickClearLimit: Get<u32>;
 
+		/// Gas limit storage growth ratio.
+		type GasLimitStorageGrowthRatio: Get<u64>;
+
 		/// Get the timestamp for the current block.
 		type Timestamp: Time;
 
@@ -772,8 +775,23 @@ pub trait GasWeightMapping {
 	fn weight_to_gas(weight: Weight) -> u64;
 }
 
+pub trait FixedGasWeightMappingAssociatedTypes {
+	type WeightPerGas: Get<Weight>;
+	type BlockWeights: Get<frame_system::limits::BlockWeights>;
+	type GasLimitPovSizeRatio: Get<u64>;
+}
+
+impl<T: Config> FixedGasWeightMappingAssociatedTypes for T {
+	type WeightPerGas = T::WeightPerGas;
+	type BlockWeights = T::BlockWeights;
+	type GasLimitPovSizeRatio = T::GasLimitPovSizeRatio;
+}
+
 pub struct FixedGasWeightMapping<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> GasWeightMapping for FixedGasWeightMapping<T> {
+impl<T> GasWeightMapping for FixedGasWeightMapping<T>
+where
+	T: FixedGasWeightMappingAssociatedTypes,
+{
 	fn gas_to_weight(gas: u64, without_base_weight: bool) -> Weight {
 		let mut weight = T::WeightPerGas::get().saturating_mul(gas);
 		if without_base_weight {
