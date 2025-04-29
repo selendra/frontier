@@ -5473,7 +5473,6 @@ dependencies = [
  "pallet-evm-precompile-simple",
  "pallet-timestamp",
  "parity-scale-codec",
- "rlp",
  "scale-info",
  "sp-core",
  "sp-io",
