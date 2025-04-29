@@ -31,22 +31,17 @@ use sp_blockchain::{Backend as _, HeaderBackend};
 use sp_consensus::SyncOracle;
 use sp_runtime::traits::{Block as BlockT, Header as HeaderT, Zero};
 // Frontier
-use fc_storage::OverrideHandle;
+use fc_storage::StorageOverride;
 use fp_consensus::{FindLogError, Hashes, Log, PostLog, PreLog};
 use fp_rpc::EthereumRuntimeRPCApi;
 
 use crate::{EthereumBlockNotification, EthereumBlockNotificationSinks, SyncStrategy};
 
-pub fn sync_block<Block: BlockT, C, BE>(
-	client: &C,
-	overrides: Arc<OverrideHandle<Block>>,
-	backend: &fc_db::kv::Backend<Block>,
+pub fn sync_block<Block: BlockT, C: HeaderBackend<Block>>(
+	storage_override: Arc<dyn StorageOverride<Block>>,
+	backend: &fc_db::kv::Backend<Block, C>,
 	header: &Block::Header,
-) -> Result<(), String>
-where
-	C: HeaderBackend<Block> + StorageProvider<Block, BE>,
-	BE: Backend<Block>,
-{
+) -> Result<(), String> {
 	let substrate_block_hash = header.hash();
 	match fp_consensus::find_log(header.digest()) {
 		Ok(log) => {
@@ -77,13 +72,7 @@ where
 						backend.mapping().write_hashes(mapping_commitment)
 					}
 					PostLog::BlockHash(expect_eth_block_hash) => {
-						let schema =
-							fc_storage::onchain_storage_schema(client, substrate_block_hash);
-						let ethereum_block = overrides
-							.schemas
-							.get(&schema)
-							.unwrap_or(&overrides.fallback)
-							.current_block(substrate_block_hash);
+						let ethereum_block = storage_override.current_block(substrate_block_hash);
 						match ethereum_block {
 							Some(block) => {
 								let got_eth_block_hash = block.header.hash();
@@ -111,11 +100,11 @@ where
 
 pub fn sync_genesis_block<Block: BlockT, C>(
 	client: &C,
-	backend: &fc_db::kv::Backend<Block>,
+	backend: &fc_db::kv::Backend<Block, C>,
 	header: &Block::Header,
 ) -> Result<(), String>
 where
-	C: ProvideRuntimeApi<Block>,
+	C: HeaderBackend<Block> + ProvideRuntimeApi<Block>,
 	C::Api: EthereumRuntimeRPCApi<Block>,
 {
 	let substrate_block_hash = header.hash();
@@ -158,8 +147,8 @@ where
 pub fn sync_one_block<Block: BlockT, C, BE>(
 	client: &C,
 	substrate_backend: &BE,
-	overrides: Arc<OverrideHandle<Block>>,
-	frontier_backend: &fc_db::kv::Backend<Block>,
+	storage_override: Arc<dyn StorageOverride<Block>>,
+	frontier_backend: &fc_db::kv::Backend<Block, C>,
 	sync_from: <Block::Header as HeaderT>::Number,
 	strategy: SyncStrategy,
 	sync_oracle: Arc<dyn SyncOracle + Send + Sync + 'static>,
@@ -220,7 +209,7 @@ where
 		{
 			return Ok(false);
 		}
-		sync_block(client, overrides, frontier_backend, &operating_header)?;
+		sync_block(storage_override, frontier_backend, &operating_header)?;
 
 		current_syncing_tips.push(*operating_header.parent_hash());
 		frontier_backend
@@ -247,8 +236,8 @@ where
 pub fn sync_blocks<Block: BlockT, C, BE>(
 	client: &C,
 	substrate_backend: &BE,
-	overrides: Arc<OverrideHandle<Block>>,
-	frontier_backend: &fc_db::kv::Backend<Block>,
+	storage_override: Arc<dyn StorageOverride<Block>>,
+	frontier_backend: &fc_db::kv::Backend<Block, C>,
 	limit: usize,
 	sync_from: <Block::Header as HeaderT>::Number,
 	strategy: SyncStrategy,
@@ -270,7 +259,7 @@ where
 			|| sync_one_block(
 				client,
 				substrate_backend,
-				overrides.clone(),
+				storage_override.clone(),
 				frontier_backend,
 				sync_from,
 				strategy,
@@ -282,13 +271,14 @@ where
 	Ok(synced_any)
 }
 
-pub fn fetch_header<Block: BlockT, BE>(
+pub fn fetch_header<Block: BlockT, C, BE>(
 	substrate_backend: &BE,
-	frontier_backend: &fc_db::kv::Backend<Block>,
+	frontier_backend: &fc_db::kv::Backend<Block, C>,
 	checking_tip: Block::Hash,
 	sync_from: <Block::Header as HeaderT>::Number,
 ) -> Result<Option<Block::Header>, String>
 where
+	C: HeaderBackend<Block>,
 	BE: HeaderBackend<Block>,
 {
 	if frontier_backend.mapping().is_synced(&checking_tip)? {
