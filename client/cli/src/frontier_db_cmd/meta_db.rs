@@ -25,8 +25,8 @@ use std::{
 use ethereum_types::H256;
 use serde::Deserialize;
 // Substrate
-use sp_runtime::traits::Block as BlockT;
 use sp_blockchain::HeaderBackend;
+use sp_runtime::traits::Block as BlockT;
 
 use super::{utils::FrontierDbMessage, FrontierDbCmd, Operation};
 
@@ -62,7 +62,6 @@ pub struct MetaDb<'a, B, C> {
 	cmd: &'a FrontierDbCmd,
 	backend: Arc<fc_db::kv::Backend<B, C>>,
 }
-
 
 impl<'a, B: BlockT, C: HeaderBackend<B>> MetaDb<'a, B, C> {
 	pub fn new(cmd: &'a FrontierDbCmd, backend: Arc<fc_db::kv::Backend<B, C>>) -> Self {

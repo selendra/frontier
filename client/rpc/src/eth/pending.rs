@@ -19,6 +19,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 // Substrate
+use fp_rpc::EthereumRuntimeRPCApi;
 use sc_client_api::{
 	backend::{AuxStore, Backend, StorageProvider},
 	UsageProvider,
@@ -35,7 +36,6 @@ use sp_runtime::{
 	TransactionOutcome,
 };
 use sp_timestamp::TimestampInherentData;
-use fp_rpc::EthereumRuntimeRPCApi;
 
 use crate::eth::Eth;
 

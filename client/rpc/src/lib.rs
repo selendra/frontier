@@ -290,7 +290,6 @@ pub mod frontier_backend_client {
 	}
 }
 
-
 pub fn err<T: ToString>(code: i32, message: T, data: Option<&[u8]>) -> jsonrpsee::core::Error {
 	jsonrpsee::core::Error::Call(jsonrpsee::types::error::CallError::Custom(
 		jsonrpsee::types::error::ErrorObject::owned(
