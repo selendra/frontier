@@ -155,10 +155,6 @@ impl AddressMapping<AccountId32> for HashedAddressMapping {
 	}
 }
 
-parameter_types! {
-	pub SuicideQuickClearLimit: u32 = 0;
-}
-
 impl pallet_evm::Config for Test {
 	type AccountProvider = pallet_evm::FrameSystemAccountProvider<Self>;
 	type FeeCalculator = FixedGasPrice;
@@ -180,7 +176,6 @@ impl pallet_evm::Config for Test {
 	type FindAuthor = FindAuthorTruncated;
 	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
-	type SuicideQuickClearLimit = SuicideQuickClearLimit;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 }

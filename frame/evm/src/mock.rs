@@ -133,7 +133,6 @@ parameter_types! {
 	pub const GasLimitStorageGrowthRatio: u64 = BLOCK_GAS_LIMIT.saturating_div(MAX_STORAGE_GROWTH);
 	pub WeightPerGas: Weight = Weight::from_parts(20_000, 0);
 	pub MockPrecompiles: MockPrecompileSet = MockPrecompileSet;
-	pub SuicideQuickClearLimit: u32 = 0;
 }
 impl crate::Config for Test {
 	type AccountProvider = crate::FrameSystemAccountProvider<Self>;
@@ -159,7 +158,6 @@ impl crate::Config for Test {
 	type FindAuthor = FindAuthorTruncated;
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
 	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
-	type SuicideQuickClearLimit = SuicideQuickClearLimit;
 	type Timestamp = Timestamp;
 	type WeightInfo = ();
 }

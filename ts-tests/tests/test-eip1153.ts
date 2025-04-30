@@ -17,6 +17,12 @@
 
 //! EVM stack-based runner.
 
+use alloc::{
+	boxed::Box,
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	vec::Vec,
+};
+use core::{marker::PhantomData, mem};
 use evm::{
 	backend::Backend as BackendT,
 	executor::stack::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
@@ -33,13 +39,6 @@ use frame_support::{
 };
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::UniqueSaturatedInto;
-use sp_std::{
-	boxed::Box,
-	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
-	marker::PhantomData,
-	mem,
-	vec::Vec,
-};
 // Frontier
 use fp_evm::{
 	AccessedStorage, CallInfo, CreateInfo, ExecutionInfoV2, IsPrecompileResult, Log, PrecompileSet,

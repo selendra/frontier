@@ -79,7 +79,7 @@ use scale_info::TypeInfo;
 // Substrate
 use frame_support::{
 	dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo},
-	storage::{child::KillStorageResult, KeyPrefixIterator},
+	storage::KeyPrefixIterator,
 	traits::{
 		fungible::{Balanced, Credit, Debt},
 		tokens::{
@@ -177,9 +177,6 @@ pub mod pallet {
 		/// Gas limit Pov size ratio.
 		type GasLimitPovSizeRatio: Get<u64>;
 
-		/// Define the quick clear limit of storage clearing when a contract suicides. Set to 0 to disable it.
-		type SuicideQuickClearLimit: Get<u32>;
-
 		/// Gas limit storage growth ratio.
 		type GasLimitStorageGrowthRatio: Get<u64>;
 
@@ -191,7 +188,7 @@ pub mod pallet {
 
 		/// EVM config used in the module.
 		fn config() -> &'static EvmConfig {
-			&SHANGHAI_CONFIG
+			&CANCUN_CONFIG
 		}
 	}
 
@@ -585,9 +582,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type AccountStorages<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, H160, Blake2_128Concat, H256, H256, ValueQuery>;
-
-	#[pallet::storage]
-	pub type Suicided<T: Config> = StorageMap<_, Blake2_128Concat, H160, (), OptionQuery>;
 }
 
 /// Utility alias for easy access to the [`AccountProvider::AccountId`] type from a given config.
@@ -815,7 +809,7 @@ where
 	}
 }
 
-static SHANGHAI_CONFIG: EvmConfig = EvmConfig::shanghai();
+static CANCUN_CONFIG: EvmConfig = EvmConfig::cancun();
 
 impl<T: Config> Pallet<T> {
 	/// Check whether an account is empty.
@@ -824,10 +818,6 @@ impl<T: Config> Pallet<T> {
 		let code_len = <AccountCodes<T>>::decode_len(address).unwrap_or(0);
 
 		account.nonce == U256::zero() && account.balance == U256::zero() && code_len == 0
-	}
-	/// Check whether an account is a suicided contract
-	pub fn is_account_suicided(address: &H160) -> bool {
-		<Suicided<T>>::contains_key(address)
 	}
 
 	pub fn iter_account_storages(address: &H160) -> KeyPrefixIterator<H256> {
@@ -844,44 +834,17 @@ impl<T: Config> Pallet<T> {
 	/// Remove an account.
 	pub fn remove_account(address: &H160) {
 		if <AccountCodes<T>>::contains_key(address) {
-			// Remember to call `dec_sufficients` when clearing Suicided.
-			<Suicided<T>>::insert(address, ());
-
-			// In theory, we can always have pre-EIP161 contracts, so we
-			// make sure the account nonce is at least one.
 			let account_id = T::AddressMapping::into_account_id(*address);
-			T::AccountProvider::inc_account_nonce(&account_id);
+			T::AccountProvider::remove_account(&account_id);
 		}
 
 		<AccountCodes<T>>::remove(address);
 		<AccountCodesMetadata<T>>::remove(address);
-
-		if T::SuicideQuickClearLimit::get() > 0 {
-			#[allow(deprecated)]
-			let res = <AccountStorages<T>>::remove_prefix(address, Some(T::SuicideQuickClearLimit::get()));
-
-			match res {
-				KillStorageResult::AllRemoved(_) => {
-					<Suicided<T>>::remove(address);
-
-					let account_id = T::AddressMapping::into_account_id(*address);
-					T::AccountProvider::remove_account(&account_id);
-				}
-				KillStorageResult::SomeRemaining(_) => (),
-			}
-		}
+		let _ = <AccountStorages<T>>::clear_prefix(address, u32::MAX, None);
 	}
 
 	/// Create an account.
 	pub fn create_account(address: H160, code: Vec<u8>) {
-		if <Suicided<T>>::contains_key(address) {
-			// This branch should never trigger, because when Suicided
-			// contains an address, then its nonce will be at least one,
-			// which causes CreateCollision error in EVM, but we add it
-			// here for safeguard.
-			return;
-		}
-
 		if code.is_empty() {
 			return;
 		}
